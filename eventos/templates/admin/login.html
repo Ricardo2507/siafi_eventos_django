@@ -1,0 +1,243 @@
+{% load i18n static %}
+<!doctype html>
+<html lang="pt-br">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SIAFI Eventos - Acesso ao Sistema</title>
+    
+    <!-- Design Corporativo Premium Adaptado e Isolado (Sem arquivos externos) -->
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #0f172a, #1e293b);
+            --accent-gradient: linear-gradient(135deg, #0ea5e9, #2563eb);
+            --background: #f1f5f9;
+            --surface: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: 
+                radial-gradient(circle at top left, rgba(14, 165, 233, 0.15), transparent 35%),
+                linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 1rem;
+        }
+
+        .login-card {
+            width: 100%;
+            max-width: 430px;
+        }
+
+        .card {
+            background: var(--surface);
+            border: none;
+            border-radius: 1.5rem;
+            box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.15);
+            overflow: hidden;
+            padding: 2.5rem 2rem;
+        }
+
+        .text-center { text-align: center; margin-bottom: 2rem; }
+
+        /* Ícone Tecnológico Adaptado para Eventos/SIAFI */
+        .login-icon {
+            width: 72px;
+            height: 72px;
+            border-radius: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--primary-gradient);
+            color: #fff;
+            font-size: 2rem;
+            margin: 0 auto 1rem auto;
+            box-shadow: 0 16px 35px rgba(15, 23, 42, 0.25);
+        }
+
+        .fw-bold { font-weight: 700; color: #0f172a; font-size: 1.5rem; letter-spacing: -0.02em; }
+        .text-muted { color: var(--text-muted); font-size: 0.875rem; margin-top: 0.25rem; }
+
+        /* Alertas de Erro Estilizados */
+        .alert-danger {
+            background-color: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecdd3;
+            padding: 0.75rem 1rem;
+            border-radius: 0.75rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .mb-3 { margin-bottom: 1.25rem; }
+        .mb-4 { margin-bottom: 1.75rem; }
+        
+        .form-label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.4rem;
+        }
+
+        /* Estrutura do Input-Group Estilizado */
+        .input-group {
+            display: flex;
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            background: white;
+            overflow: hidden;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        
+        .input-group:focus-within {
+            border-color: #0ea5e9;
+            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+        }
+
+        .input-group-text {
+            background: white;
+            padding: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            border: none;
+            user-select: none;
+        }
+
+        .form-control {
+            flex-grow: 1;
+            border: none;
+            padding: 0.75rem 0.75rem 0.75rem 0;
+            font-size: 0.95rem;
+            outline: none;
+            color: var(--text-main);
+            background: transparent;
+        }
+
+        /* Botão Corporativo em Formato de Pílula */
+        .btn-primary {
+            width: 100%;
+            background: var(--primary-gradient);
+            color: white;
+            padding: 0.8rem;
+            font-size: 0.95rem;
+            font-weight: 600;
+            border-radius: 50px;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: opacity 0.15s;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.92;
+        }
+    </style>
+</head>
+<body>
+
+<div class="login-card">
+    <div class="card">
+        
+        <div class="text-center">
+            <!-- Ícone alterado para um símbolo de engrenagem/parâmetro técnico -->
+            <div class="login-icon">
+                &#9881;
+            </div>
+            <h2 class="fw-bold">
+                SIAFI Eventos
+            </h2>
+            <p class="text-muted">
+                Controle de Parametrizações do CONSIT
+            </p>
+        </div>
+
+        <!-- Validação das mensagens de erro oficiais do Django Admin -->
+        {% if form.errors and not form.non_field_errors %}
+            <div class="alert-danger">
+                <span>&#9888;</span> Por favor, preencha os campos obrigatórios.
+            </div>
+        {% endif %}
+        {% if form.non_field_errors %}
+            {% for error in form.non_field_errors %}
+                <div class="alert-danger">
+                    <span>&#9888;</span> {{ error }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <!-- Formulário integrado ao ecossistema do Django -->
+        <form action="{{ app_path }}" method="post" id="login-form">
+            {% csrf_token %}
+
+            <div class="mb-3">
+                <label class="form-label">
+                    Usuário
+                </label>
+                <div class="input-group">
+                    <span class="input-group-text">&#128100;</span>
+                    <input
+                        type="text"
+                        name="username"
+                        class="form-control"
+                        placeholder="Digite seu usuário"
+                        required
+                        autofocus
+                        autocomplete="username"
+                    >
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label">
+                    Senha
+                </label>
+                <div class="input-group">
+                    <span class="input-group-text">&#128274;</span>
+                    <input
+                        type="password"
+                        name="password"
+                        class="form-control"
+                        placeholder="Digite sua senha"
+                        required
+                        autocomplete="current-password"
+                    >
+                </div>
+            </div>
+
+            <!-- Mantém o fluxo dinâmico de redirecionamento automático (?next=/) -->
+            <input type="hidden" name="next" value="{{ next }}">
+
+            <button type="submit" class="btn-primary">
+                Entrar no Sistema &rarr;
+            </button>
+        </form>
+
+    </div>
+</div>
+
+</body>
+</html>

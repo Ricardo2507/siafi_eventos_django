@@ -1,0 +1,77 @@
+<div style="display: flex; flex-direction: column; gap: 1.5rem;">
+    
+    <!-- Seção 1: Metadados Estruturais superiores organizados em Grade -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; background: #f8fafc; padding: 1.25rem; border-radius: 0.5rem; border: 1px solid var(--border); font-size: 0.85rem;">
+        <div>
+            <span style="display: block; color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Identificação</span>
+            <p style="margin-bottom: 0.25rem;"><strong>Código SIAFI:</strong> <span class="monospace" style="background: #e2e8f0; font-size: 0.85rem;">{{ evento.codigo }}</span></p>
+            <p style="margin-bottom: 0.25rem;"><strong>Classe do Evento:</strong> <span class="monospace">{{ evento.classe }}</span></p>
+            <p><strong>Tipo de Utilização:</strong> <span class="monospace">{{ evento.tipo_utilizacao }}</span></p>
+        </div>
+        <div style="border-left: 1px solid var(--border); padding-left: 1.25rem;">
+            <span style="display: block; color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Metadados Técnicos</span>
+            <p style="margin-bottom: 0.25rem;"><strong>Indicador de Estorno:</strong> {{ evento.estorno|default:"Não Parametrizado" }}</p>
+            <p><strong>Fonte de Origem:</strong> <span style="color: var(--text-muted); font-weight: 500;">{{ evento.fonte }}</span></p>
+        </div>
+    </div>
+    
+    <!-- Seção 2: Bloco Informativo de Especificação Descritiva -->
+    <div>
+        <span style="display: block; color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Especificação Descritiva</span>
+        <div style="padding: 1rem; background: #ffffff; border: 1px solid var(--border); border-left: 4px solid var(--primary); border-radius: 0.25rem; font-size: 0.875rem; color: #334155; text-align: justify;">
+            {{ evento.especificacao|default:"*Nenhuma descrição detalhada fornecida pelo manual original.*" }}
+        </div>
+    </div>
+
+    <!-- Seção 3: Balancete Contábil estruturado em Colunas de Débito e Crédito -->
+    <div>
+        <span style="display: block; color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; margin-bottom: 0.75rem;">Demonstrativo de Lançamentos Vinculados</span>
+        <div style="width: 100%; overflow-x: auto; border: 1px solid var(--border); border-radius: 0.375rem;">
+            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem;">
+                <thead>
+                    <tr style="background-color: #f1f5f9; border-bottom: 2px solid var(--border); color: #475569; font-weight: 600;">
+                        <th style="padding: 0.75rem 1rem; width: 15%;">Unidade (UGE)</th>
+                        <th style="padding: 0.75rem 1rem; width: 10%; text-align: center;">Ordem</th>
+                        <th style="padding: 0.75rem 1rem; width: 37.5%; color: #dc2626; background-color: #fef2f2;">Contas a Débito (D)</th>
+                        <th style="padding: 0.75rem 1rem; width: 37.5%; color: #16a34a; background-color: #f0fdf4;">Contas a Crédito (C)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for l in evento.lancamentos.all %}
+                    <tr style="border-bottom: 1px solid var(--border); transition: background-color 0.1s;">
+                        <!-- Coluna UGE -->
+                        <td style="padding: 0.75rem 1rem; font-weight: 700; color: var(--primary);">{{ l.uge }}</td>
+                        
+                        <!-- Coluna Ordem Seq -->
+                        <td style="padding: 0.75rem 1rem; text-align: center; color: var(--text-muted);" class="monospace">{{ l.ordem }}</td>
+                        
+                        <!-- Coluna Lançamento a Débito -->
+                        <td style="padding: 0.75rem 1rem; background-color: #fffafb;">
+                            {% if l.natureza == 'D' %}
+                                <span class="monospace" style="background: #fecdd3; color: #9f1239; border: 1px solid #fda4af;">{{ l.conta }}</span>
+                            {% else %}
+                                <span style="color: #cbd5e1; font-style: italic; font-size: 0.8rem;">—</span>
+                            {% endif %}
+                        </td>
+                        
+                        <!-- Coluna Lançamento a Crédito -->
+                        <td style="padding: 0.75rem 1rem; background-color: #f9fdfa;">
+                            {% if l.natureza == 'C' %}
+                                <span class="monospace" style="background: #bbf7d0; color: #166534; border: 1px solid #86efac;">{{ l.conta }}</span>
+                            {% else %}
+                                <span style="color: #cbd5e1; font-style: italic; font-size: 0.8rem;">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" style="text-align: center; padding: 2.5rem; color: var(--text-muted); font-style: italic;">
+                            Nenhum lançamento de conta contábil parametrizado para este evento.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

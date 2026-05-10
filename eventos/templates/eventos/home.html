@@ -1,0 +1,261 @@
+{% extends 'eventos/base.html' %}
+
+{% block content %}
+<div class="card">
+    <!-- Cabeçalho com Filtros de Pesquisa -->
+    <div style="border-bottom: 1px solid var(--border); padding-bottom: 1.25rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <h2 style="font-size: 1.35rem; font-weight: 700; color: var(--primary); letter-spacing: -0.02em;">Relação de Eventos SIAFI</h2>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.15rem;">Painel analítico de controle de dados integrados ao CONSIT.</p>
+        </div>
+        
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <!-- Dropdown Seletor de Quantidade de Registros -->
+            <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">
+                <label for="seletorLinhas">Exibir:</label>
+                <select id="seletorLinhas" onchange="mudarQuantidadeLinhas()" style="padding: 0.45rem 0.5rem; font-size: 0.85rem; border: 1px solid var(--border); border-radius: 0.375rem; background: white; outline: none; color: var(--text-main); font-weight: 500;">
+                    <option value="10" selected>10 registros</option>
+                    <option value="25">25 registros</option>
+                    <option value="50">50 registros</option>
+                    <option value="100">100 registros</option>
+                </select>
+            </div>
+            <!-- Entrada da Busca Global -->
+            <input type="text" id="campoBusca" placeholder="Filtrar por código ou especificação..." style="padding: 0.45rem 1.0rem; font-size: 0.85rem; border: 1px solid var(--border); border-radius: 0.375rem; width: 320px; outline: none; color: var(--text-main); transition: border-color 0.15s;">
+        </div>
+    </div>
+
+    <!-- Barra Superior de Ferramentas e Relatórios -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem; background: #f8fafc; padding: 0.6rem 1rem; border-radius: 0.375rem; border: 1px solid var(--border);">
+        <div style="display: flex; align-items: center;">
+            <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-right: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Relatórios:</span>
+            <button onclick="exportarTabela('excel')" class="btn btn-export">📊 Excel</button>
+            <button onclick="exportarTabela('print')" class="btn btn-export">🖨️ Imprimir</button>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Ocultar Colunas:</span>
+            <label style="font-size: 0.8rem; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.25rem;"><input type="checkbox" checked onchange="alternarColuna(2)"> Fonte</label>
+            <label style="font-size: 0.8rem; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.25rem;"><input type="checkbox" checked onchange="alternarColuna(3)"> Lançamentos</label>
+            <label style="font-size: 0.8rem; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.25rem;"><input type="checkbox" checked onchange="alternarColuna(4)"> Situações</label>
+        </div>
+    </div>
+    
+    <!-- Tabela Corporativa -->
+    <div style="width: 100%; overflow-x: auto;">
+        <table class="custom-table" id="tabelaEstilizada">
+            <thead>
+                <tr>
+                    <th style="width: 8%">Código</th>
+                    <th style="width: 42%">Especificação</th>
+                    <th style="width: 15%">Fonte de Dados</th>
+                    <th style="width: 15%">Lançamentos Contábeis</th>
+                    <th style="width: 10%">Situações</th>
+                    <th style="width: 10%; text-align: center;">Painel</th>
+                </tr>
+            </thead>
+            <tbody id="corpoTabelaEventos"></tbody>
+        </table>
+    </div>
+
+    <!-- Paginação e Métricas do DataTables -->
+    <div style="margin-top: 1.5rem; display: flex; justify-content: space-between; align-items: center; font-size: 0.825rem; color: var(--text-muted); border-top: 1px solid var(--border); padding-top: 1.25rem;">
+        <div id="infoRegistros" style="font-weight: 500;">Carregando registros do servidor...</div>
+        <div style="display: flex; gap: 0.35rem;" id="blocoPaginacaoBotoes"></div>
+    </div>
+</div>
+
+<!-- Modal 1: Detalhes -->
+<div id="modalNativo" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.6); z-index: 9999; align-items: center; justify-content: center; padding: 1rem; backdrop-filter: blur(2px);">
+    <div style="background: white; width: 100%; max-width: 850px; border-radius: 0.5rem; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); overflow: hidden; display: flex; flex-direction: column; max-height: 90vh;">
+        <div style="background: var(--primary); color: white; padding: 1.1rem 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="font-size: 1.05rem; font-weight: 600;">Ficha Técnica do Evento</h3>
+            <span onclick="fecharModal('modalNativo')" style="cursor: pointer; font-size: 1.5rem; font-weight: 300; line-height: 1; color: #94a3b8;">&times;</span>
+        </div>
+        <div id="conteudoModalNativo" style="padding: 1.75rem; overflow-y: auto; flex-grow: 1;"></div>
+        <div style="background: #f8fafc; padding: 1rem 1.5rem; border-top: 1px solid var(--border); text-align: right;">
+            <button onclick="fecharModal('modalNativo')" class="btn" style="background-color: #64748b; color: white; padding: 0.45rem 1.2rem; font-size: 0.85rem;">Fechar Visualização</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 2: Edição de Situações -->
+<div id="modalEditarNativo" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.6); z-index: 9999; align-items: center; justify-content: center; padding: 1rem; backdrop-filter: blur(2px);">
+    <div style="background: white; width: 100%; max-width: 900px; border-radius: 0.5rem; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); overflow: hidden; display: flex; flex-direction: column; max-height: 90vh;">
+        <div style="background: #7c2d12; color: white; padding: 1.1rem 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="font-size: 1.05rem; font-weight: 600;">Ajustar Associações e Regras CONSIT</h3>
+            <span onclick="fecharModal('modalEditarNativo')" style="cursor: pointer; font-size: 1.5rem; font-weight: 300; line-height: 1; color: #fdba74;">&times;</span>
+        </div>
+        <div id="conteudoModalEditar" style="padding: 1.75rem; overflow-y: auto; flex-grow: 1;"></div>
+        <div style="background: #f8fafc; padding: 1rem 1.5rem; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+            <span id="mensagemSalvar" style="font-size: 0.85rem; font-weight: 600;"></span>
+            <div>
+                <button onclick="fecharModal('modalEditarNativo')" class="btn" style="background-color: #64748b; color: white; padding: 0.45rem 1.2rem; font-size: 0.85rem; margin-right: 0.5rem;">Descartar</button>
+                <button onclick="submeterFormularioEditar()" class="btn" style="background-color: #ea580c; color: white; padding: 0.45rem 1.2rem; font-size: 0.85rem;">Salvar Regras</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let registroInicial = 0;
+    let linhasPorPagina = 10;
+    let textoBusca = "";
+    let carregando = false;
+    let idEventoAtual = null;
+
+    function carregarDadosTabela() {
+        if (carregando) return;
+        carregando = true;
+        $('#corpoTabelaEventos').html('<tr><td colspan="6" style="text-align:center; padding: 4rem; color: var(--text-muted); font-size:0.875rem;">Aguardando retorno do banco de dados...</td></tr>');
+
+        $.ajax({
+            url: "/ajax/eventos/",
+            type: "GET",
+            data: { "draw": 1, "start": registroInicial, "length": linhasPorPagina, "search[value]": textoBusca },
+            success: function(resposta) {
+                carregando = false;
+                let htmlLinhas = "";
+                if (resposta.data.length === 0) {
+                    $('#corpoTabelaEventos').html('<tr><td colspan="6" style="text-align:center; padding: 3rem; color: var(--text-muted);">Nenhum lançamento localizado.</td></tr>');
+                    $('#infoRegistros').text('Nenhum registro localizado');
+                    renderizarBotoesPaginacao(0);
+                    return;
+                }
+                resposta.data.forEach(function(item) {
+                    let lancamentosFormatados = item.lancamentos.split('<br>').map(l => l !== 'Nenhum' ? `<span class="monospace">${l}</span>` : l).join(' ');
+                    let situacoesFormatadas = item.situacoes.split('<br>').map(s => s !== 'Nenhuma' ? `<span class="monospace" style="background:#f0fdfa; color:#0d9488; border:1px solid #ccfbf1;">${s}</span>` : s).join(' ');
+
+                    htmlLinhas += `<tr>
+                        <td style="font-weight: 700; color: var(--primary);" class="monospace">${item.codigo}</td>
+                        <td style="color: #334155; font-size: 0.85rem; font-weight:500;">${item.especificacao}</td>
+                        <td style="color: var(--text-muted); font-size: 0.8rem;">${item.fonte}</td>
+                        <td style="line-height: 1.6;">${lancamentosFormatados}</td>
+                        <td style="line-height: 1.6;">${situacoesFormatadas}</td>
+                        <td style="text-align: center; vertical-align: middle;">${item.acoes}</td>
+                    </tr>`;
+                });
+                $('#corpoTabelaEventos').html(htmlLinhas);
+                let fim = registroInicial + resposta.data.length;
+                $('#infoRegistros').text(`Mostrando de ${registroInicial + 1} até ${fim} de um total de ${resposta.recordsFiltered} registros filtrados.`);
+                renderizarBotoesPaginacao(resposta.recordsFiltered);
+                aplicarFiltroOcultacaoOtimizado();
+            }
+        });
+    }
+
+    function renderizarBotoesPaginacao(totalRegistros) {
+        let totalPaginas = Math.ceil(totalRegistros / linhasPorPagina);
+        let paginaAtual = Math.floor(registroInicial / linhasPorPagina) + 1;
+        let htmlBotoes = "";
+
+        htmlBotoes += `<button class="btn btn-pagination" ${paginaAtual === 1 ? 'disabled' : ''} onclick="irParaPagina(${paginaAtual - 2})">&larr;</button>`;
+
+        let inicioJanela = Math.max(1, paginaAtual - 2);
+        let fimJanela = Math.min(totalPaginas, inicioJanela + 4);
+        if (fimJanela - inicioJanela < 4) { inicioJanela = Math.max(1, fimJanela - 4); }
+
+        for (let i = inicioJanela; i <= fimJanela; i++) {
+            let ativo = i === paginaAtual;
+            htmlBotoes += `<button class="btn btn-pagination" style="${ativo ? 'background-color: var(--primary); color: white; border-color: var(--primary);' : ''}" ${ativo ? 'disabled' : ''} onclick="irParaPagina(${i - 1})">${i}</button>`;
+        }
+
+        htmlBotoes += `<button class="btn btn-pagination" ${paginaAtual >= totalPaginas ? 'disabled' : ''} onclick="irParaPagina(${paginaAtual})">&rarr;</button>`;
+        $('#blocoPaginacaoBotoes').html(htmlBotoes);
+    }
+
+    function irParaPagina(indicePagina) { registroInicial = indicePagina * linhasPorPagina; carregarDadosTabela(); }
+    function mudarQuantidadeLinhas() { linhasPorPagina = parseInt($('#seletorLinhas').val()); registroInicial = 0; carregarDadosTabela(); }
+
+    let temporizadorBusca;
+    $('#campoBusca').on('input', function() {
+        clearTimeout(temporizadorBusca);
+        temporizadorBusca = setTimeout(function() { textoBusca = $('#campoBusca').val(); registroInicial = 0; carregarDadosTabela(); }, 350);
+    });
+
+    let statusColunasVisiveis = { 2: true, 3: true, 4: true };
+    function alternarColuna(indiceColuna) {
+        statusColunasVisiveis[indiceColuna] = !statusColunasVisiveis[indiceColuna];
+        aplicarFiltroOcultacaoOtimizado();
+    }
+    function aplicarFiltroOcultacaoOtimizado() {
+        [2, 3, 4].forEach(idx => {
+            let mostrar = statusColunasVisiveis[idx];
+            $(`#tabelaEstilizada tr th:nth-child(${idx + 1}), #tabelaEstilizada tr td:nth-child(${idx + 1})`).toggle(mostrar);
+        });
+    }
+
+    function exportarTabela(tipo) {
+        let conteudoCSV = "\uFEFF";
+        conteudoCSV += "Código;Especificação;Fonte de Dados;Lançamentos Contábeis;Situações\n";
+
+        $("#tabelaEstilizada tbody tr").each(function() {
+            let colunas = $(this).find("td");
+            if (colunas.length > 0) {
+                let cod = $(colunas[0]).text().trim();
+                let esp = $(colunas[1]).text().trim().replace(/;/g, ',');
+                let fnt = $(colunas[2]).text().trim().replace(/;/g, ',');
+                let lnc = $(colunas[3]).text().trim().replace(/\n/g, ' ').replace(/;/g, ',');
+                let sit = $(colunas[4]).text().trim().replace(/;/g, ',');
+                conteudoCSV += `${cod};${esp};${fnt};${lnc};${sit}\n`;
+            }
+        });
+
+        if (tipo === 'excel') {
+            let blob = new Blob([conteudoCSV], { type: "text/csv;charset=utf-8;" });
+            let link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute("download", "Relatorio_SIAFI_Eventos.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } else if (tipo === 'print') {
+            let janelaImpressao = window.open('', '', 'height=700,width=1000');
+            janelaImpressao.document.write('<html><head><title>Relatório SIAFI Eventos</title>');
+            janelaImpressao.document.write('<style>body{font-family:sans-serif;padding:20px;color:#334155;} table{width:100%;border-collapse:collapse;margin-top:20px;} th,td{border:1px solid #e2e8f0;padding:10px;text-align:left;font-size:12px;} th{background:#f8fafc;color:#64748b;text-transform:uppercase;}</style></head><body>');
+            janelaImpressao.document.write('<h2>Relação de Eventos SIAFI - Relatório Técnico</h2>');
+            janelaImpressao.document.write(document.getElementById('tabelaEstilizada').outerHTML);
+            janelaImpressao.document.write('</body></html>');
+            janelaImpressao.document.close();
+            janelaImpressao.document.querySelectorAll('#tabelaEstilizada tr th:last-child, #tabelaEstilizada tr td:last-child').forEach(el => el.remove());
+            janelaImpressao.focus();
+            setTimeout(function(){ janelaImpressao.print(); janelaImpressao.close(); }, 250);
+        }
+    }
+
+    function abrirDetalhe(id) {
+        $('#conteudoModalNativo').html('<div style="text-align:center; padding: 4rem; color: var(--text-muted);">Consultando ficha cadastral no banco...</div>');
+        $('#modalNativo').css('display', 'flex');
+        $.get('/evento/' + id + '/modal/', function(html) { $('#conteudoModalNativo').html(html); });
+    }
+
+    function abrirEditar(id) {
+        idEventoAtual = id;
+        $('#mensagemSalvar').text('');
+        $('#conteudoModalEditar').html('<div style="text-align:center; padding: 4rem; color: var(--text-muted);">Estruturando formulário parametrizável...</div>');
+        $('#modalEditarNativo').css('display', 'flex');
+        $.get('/evento/' + id + '/situacoes/', function(html) { $('#conteudoModalEditar').html(html); });
+    }
+
+    function submeterFormularioEditar() {
+        let formulario = $('#conteudoModalEditar').find('form');
+        if (formulario.length === 0) return;
+        $('#mensagemSalvar').css('color', 'var(--text-main)').text('Salvando configurações...');
+        $.ajax({
+            url: '/evento/' + idEventoAtual + '/situacoes/',
+            type: 'POST',
+            data: formulario.serialize(),
+            success: function(resposta) {
+                if (resposta.status === 'success') {
+                    $('#mensagemSalvar').css('color', '#16a34a').text('Confirmado! Base recarregada.');
+                    setTimeout(function() { fecharModal('modalEditarNativo'); carregarDadosTabela(); }, 800);
+                }
+            }
+        });
+    }
+
+    function fecharModal(modalId) { $('#' + modalId).css('display', 'none'); }
+    $(document).ready(function() { carregarDadosTabela(); });
+</script>
+{% endblock %}

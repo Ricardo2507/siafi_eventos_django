@@ -1,0 +1,101 @@
+<form method="post" style="display: flex; flex-direction: column; gap: 1.5rem;">
+    {% csrf_token %}
+    
+    <div>
+        <h4 style="font-size: 1.1rem; color: var(--primary); margin-bottom: 0.25rem;">Evento Código: {{ evento.codigo }}</h4>
+        <p style="font-size: 0.85rem; color: #64748b;">{{ evento.especificacao|slice:":150" }}...</p>
+    </div>
+
+    <!-- 1️⃣ Situações Atuais -->
+    {% if situacoes %}
+    <div style="border: 1px solid var(--border); border-radius: 0.5rem; overflow: hidden;">
+        <div style="background: #f8fafc; padding: 0.6rem 1rem; font-size: 0.85rem; font-weight: 600; color: #475569; border-bottom: 1px solid var(--border);">
+            Situações Já Associadas
+        </div>
+        <div style="padding: 1rem; display: flex; flex-direction: column; gap: 1rem;">
+            {% for se in situacoes %}
+            <div style="background: #fdfdfd; padding: 1rem; border: 1px solid #f1f5f9; border-radius: 0.375rem; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+                <div style="font-weight: 600; color: #1e293b; margin-bottom: 0.75rem; font-size: 0.9rem;">
+                    ⚙️ Identificador: {{ se.situacao.codigo }} - {{ se.situacao.titulo }}
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem;">
+                    <div>
+                        <label style="display:block; font-size:0.75rem; color:#64748b; margin-bottom:0.25rem;">Tipo de Evento (CONSIT)</label>
+                        <input type="text" name="tipo_evento_{{ se.id }}" value="{{ se.tipo_evento }}" style="width:100%; padding:0.4rem 0.6rem; font-size:0.85rem; border:1px solid var(--border); border-radius:0.25rem; outline:none;">
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:0.75rem; color:#64748b; margin-bottom:0.25rem;">Grau de Confiança</label>
+                        <select name="confianca_{{ se.id }}" style="width:100%; padding:0.4rem 0.6rem; font-size:0.85rem; border:1px solid var(--border); border-radius:0.25rem; background:white; outline:none;">
+                            <option value="oficial" {% if se.confianca == 'oficial' %}selected{% endif %}>Oficial / CONSIT</option>
+                            <option value="inferida" {% if se.confianca == 'inferida' %}selected{% endif %}>Inferida por contas</option>
+                            <option value="manual" {% if se.confianca == 'manual' %}selected{% endif %}>Manual do Usuário</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="margin-top: 0.75rem;">
+                    <label style="display:block; font-size:0.75rem; color:#64748b; margin-bottom:0.25rem;">Justificativa Técnica</label>
+                    <textarea name="justificativa_{{ se.id }}" rows="2" style="width:100%; padding:0.4rem 0.6rem; font-size:0.85rem; border:1px solid var(--border); border-radius:0.25rem; resize:vertical; outline:none;">{{ se.justificativa }}</textarea>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 2️⃣ Vínculo por Dropdown -->
+    <div style="border: 1px solid var(--border); border-radius: 0.5rem; overflow: hidden;">
+        <div style="background: #f8fafc; padding: 0.6rem 1rem; font-size: 0.85rem; font-weight: 600; color: #475569; border-bottom: 1px solid var(--border);">
+            Vincular uma Situação Existente (Dropdown)
+        </div>
+        <div style="padding: 1rem;">
+            <select name="nova_situacao" style="width:100%; padding:0.5rem; font-size:0.85rem; border:1px solid var(--border); border-radius:0.25rem; background:white; outline:none;">
+                <option value="">-- Selecione uma situação catalogada se desejar vincular --</option>
+                {% for s in todas_situacoes %}
+                <option value="{{ s.id }}">{{ s.codigo }} - {{ s.titulo }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <!-- 3️⃣ Inclusão Manual Nova -->
+    <div style="border: 1px solid var(--border); border-radius: 0.5rem; overflow: hidden;">
+        <div style="background: #f8fafc; padding: 0.6rem 1rem; font-size: 0.85rem; font-weight: 600; color: #475569; border-bottom: 1px solid var(--border);">
+            Ou Criar e Inserir Nova Situação Manualmente
+        </div>
+        <div style="padding: 1rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem;">
+            <div>
+                <label style="display:block; font-size:0.75rem; color:#64748b; margin-bottom:0.25rem;">Código da Nova Situação</label>
+                <input type="text" name="nova_situacao_manual_codigo" placeholder="Ex: SIT2025" style="width:100%; padding:0.4rem 0.6rem; font-size:0.85rem; border:1px solid var(--border); border-radius:0.25rem; outline:none;">
+            </div>
+            <div>
+                <label style="display:block; font-size:0.75rem; color:#64748b; margin-bottom:0.25rem;">Título Descritivo</label>
+                <input type="text" name="nova_situacao_manual_titulo" placeholder="Ex: Parametrização Restrita" style="width:100%; padding:0.4rem 0.6rem; font-size:0.85rem; border:1px solid var(--border); border-radius:0.25rem; outline:none;">
+            </div>
+        </div>
+    </div>
+
+    <!-- Parâmetros Globais para Novas Associações (Dropdown ou Manual) -->
+    <div style="border: 1px dashed #cbd5e1; padding: 1rem; border-radius: 0.5rem; background: #fafafa;">
+        <div style="font-size: 0.8rem; font-weight: 600; color: #475569; margin-bottom: 0.75rem; text-transform: uppercase;">
+            Configurações para a nova associação adicionada acima
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; margin-bottom: 0.75rem;">
+            <div>
+                <label style="display:block; font-size:0.75rem; color:#64748b; margin-bottom:0.25rem;">Tipo de Evento</label>
+                <input type="text" name="nova_tipo_evento" style="width:100%; padding:0.4rem 0.6rem; font-size:0.85rem; border:1px solid var(--border); border-radius:0.25rem; outline:none;">
+            </div>
+            <div>
+                <label style="display:block; font-size:0.75rem; color:#64748b; margin-bottom:0.25rem;">Grau de Confiança</label>
+                <select name="nova_confianca" style="width:100%; padding:0.4rem 0.6rem; font-size:0.85rem; border:1px solid var(--border); border-radius:0.25rem; background:white; outline:none;">
+                    <option value="manual" selected>Manual do Usuário</option>
+                    <option value="inferida">Inferida por contas</option>
+                    <option value="oficial">Oficial / CONSIT</option>
+                </select>
+            </div>
+        </div>
+        <div>
+            <label style="display:block; font-size:0.75rem; color:#64748b; margin-bottom:0.25rem;">Justificativa Técnica</label>
+            <textarea name="nova_justificativa" rows="2" style="width:100%; padding:0.4rem 0.6rem; font-size:0.85rem; border:1px solid var(--border); border-radius:0.25rem; resize:vertical; outline:none;"></textarea>
+        </div>
+    </div>
+</form>
