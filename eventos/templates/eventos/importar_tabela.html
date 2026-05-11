@@ -2,15 +2,16 @@
 
 {% block content %}
 
-<div class="container py-4">
+<div class="container d-flex justify-content-center align-items-start py-5">
 
-    <div class="card shadow-sm border-0 mx-auto"
-         style="max-width: 720px; border-radius: 14px;">
+    <div class="card shadow-sm border-0"
+         style="width: 100%; max-width: 720px; border-radius: 14px;">
 
         <div class="card-body p-4">
 
             <!-- TÍTULO -->
             <div class="mb-4">
+
                 <h3 class="fw-bold text-dark mb-1">
                     Atualizar Carga de Dados SIAFI
                 </h3>
@@ -18,6 +19,7 @@
                 <p class="text-muted small mb-0">
                     Submeta o arquivo consolidado de eventos do CONSIT para processamento assíncrono.
                 </p>
+
             </div>
 
             <!-- ALERTAS -->
@@ -54,7 +56,7 @@
 
                     </label>
 
-                    <!-- INPUT FILE -->
+                    <!-- INPUT -->
                     <input
                         type="file"
                         id="id_arquivo"
@@ -66,7 +68,7 @@
                         onchange="mostrarInfoArquivo(this)"
                     >
 
-                    <!-- INFO DO ARQUIVO -->
+                    <!-- INFO ARQUIVO -->
                     <div id="arquivo-info"
                          class="alert alert-primary mt-4 text-start"
                          style="display:none;">
