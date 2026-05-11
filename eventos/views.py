@@ -9,7 +9,7 @@ from django.utils.text import get_valid_filename
 
 from .models import Evento, LancamentoConta, Situacao, SituacaoEvento
 from .parser import parse_tabela_eventos
-
+import os
 
 def _is_admin(user):
     return user.is_authenticated and user.is_superuser
@@ -184,59 +184,88 @@ def atualizar_situacoes(request, evento_id):
 
 @user_passes_test(_is_admin, login_url='eventos:login')
 def importar_tabela_view(request):
-    contexto = {'status': None, 'mensagem': None}
+    """View restrita que gerencia o upload e o processamento do TXT sem perda de dados."""
+    if not request.user.is_authenticated or not request.user.is_superuser:
+        return redirect('eventos:home')
 
-    if request.method == 'POST' and request.FILES.get('arquivo_txt'):
+    contexto = {
+        'status': None,
+        'mensagem': None,
+    }
+
+    if request.method == "POST" and request.FILES.get('arquivo_txt'):
         arquivo_upload = request.FILES['arquivo_txt']
-        nome_arquivo = get_valid_filename(arquivo_upload.name)
 
-        if not nome_arquivo.lower().endswith('.txt'):
-            contexto.update({'status': 'error', 'mensagem': 'Extensão inválida. Forneça um arquivo .txt do SIAFI.'})
+        if not arquivo_upload.name.lower().endswith('.txt'):
+            contexto.update({
+                'status': 'error',
+                'mensagem': 'Extensão inválida. Forneça um arquivo .txt do SIAFI.'
+            })
             return render(request, 'eventos/importar_tabela.html', contexto)
 
-        caminho_temporario = Path('data') / f'temp_{nome_arquivo}'
+        caminho_temporario = None
 
         try:
-            caminho_temporario.parent.mkdir(exist_ok=True)
-            with caminho_temporario.open('wb+') as destino:
+            os.makedirs("data", exist_ok=True)
+            caminho_temporario = f"data/temp_{arquivo_upload.name}"
+
+            with open(caminho_temporario, 'wb+') as destino:
                 for fragmento in arquivo_upload.chunks():
                     destino.write(fragmento)
 
             parsed_eventos = parse_tabela_eventos(caminho_temporario)
 
+            total_lancamentos = 0
+            objetos_lancamentos = []
+
             with transaction.atomic():
-                for parsed in parsed_eventos:
-                    classe, tipo_utilizacao, sequencial = parsed.codigo.split('.')
-                    evento, _ = Evento.objects.update_or_create(
-                        codigo=parsed.codigo,
+                for pe in parsed_eventos:
+                    evento, criado = Evento.objects.update_or_create(
+                        codigo=pe.codigo,
                         defaults={
-                            'classe': classe,
-                            'tipo_utilizacao': tipo_utilizacao,
-                            'sequencial': sequencial,
-                            'estorno': parsed.estorno,
-                            'especificacao': parsed.especificacao,
-                            'fonte': f'Upload manual via web por {request.user.username}',
-                        },
+                            'estorno': pe.estorno,
+                            'especificacao': pe.especificacao,
+                            'fonte': f'Upload Manual via Web por {request.user.username}',
+                        }
                     )
+
                     LancamentoConta.objects.filter(evento=evento).delete()
-                    LancamentoConta.objects.bulk_create([
-                        LancamentoConta(
-                            evento=evento,
-                            uge=conta['uge'],
-                            natureza=conta['natureza'],
-                            conta=conta['conta'],
-                            ordem=conta['ordem'],
+
+                    for c in pe.contas:
+                        objetos_lancamentos.append(
+                            LancamentoConta(
+                                evento=evento,
+                                uge=c['uge'],
+                                natureza=c['natureza'],
+                                conta=c['conta'],
+                                ordem=c['ordem'],
+                            )
                         )
-                        for conta in parsed.contas
-                    ])
+
+                if objetos_lancamentos:
+                    LancamentoConta.objects.bulk_create(
+                        objetos_lancamentos,
+                        batch_size=1000
+                    )
+                    total_lancamentos = len(objetos_lancamentos)
 
             contexto.update({
                 'status': 'success',
-                'mensagem': f'Sucesso! Foram processados {len(parsed_eventos)} eventos mantendo as parametrizações existentes.',
+                'mensagem': (
+                    f'Sucesso! Foram processados {len(parsed_eventos)} eventos '
+                    f'e {total_lancamentos} lançamentos contábeis. '
+                    f'As parametrizações existentes foram preservadas.'
+                )
             })
+
         except Exception as erro:
-            contexto.update({'status': 'error', 'mensagem': f'Falha crítica no processamento: {erro}'})
+            contexto.update({
+                'status': 'error',
+                'mensagem': f'Falha crítica no processamento: {str(erro)}'
+            })
+
         finally:
-            caminho_temporario.unlink(missing_ok=True)
+            if caminho_temporario and os.path.exists(caminho_temporario):
+                os.remove(caminho_temporario)
 
     return render(request, 'eventos/importar_tabela.html', contexto)

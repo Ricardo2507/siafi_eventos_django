@@ -3,35 +3,96 @@
 {% block content %}
 <div class="card" style="max-width: 650px; margin: 2rem auto;">
     <div style="border-bottom: 1px solid var(--border); padding-bottom: 1rem; margin-bottom: 1.5rem;">
-        <h2 style="font-size: 1.35rem; font-weight: 700; color: var(--primary); letter-spacing: -0.02em;">Atualizar Carga de Dados SIAFI</h2>
-        <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.15rem;">Submeta o arquivo consolidado de eventos do CONSIT para processamento assíncrono.</p>
+        <h2 style="font-size: 1.35rem; font-weight: 700; color: var(--primary); letter-spacing: -0.02em;">
+            Atualizar Carga de Dados SIAFI
+        </h2>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.15rem;">
+            Submeta o arquivo consolidado de eventos do CONSIT para processamento.
+        </p>
     </div>
 
-    <!-- Alertas Coorporativos -->
     {% if status == 'success' %}
-    <div style="background-color: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; padding: 1rem; border-radius: 0.375rem; font-size: 0.875rem; font-weight: 500; margin-bottom: 1.5rem;">
-        {{ mensagem }}
-    </div>
+        <div style="background-color: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; padding: 1rem; border-radius: 0.375rem; font-size: 0.875rem; font-weight: 500; margin-bottom: 1.5rem;">
+            {{ mensagem }}
+        </div>
     {% elif status == 'error' %}
-    <div style="background-color: #fef2f2; color: #dc2626; border: 1px solid #fecdd3; padding: 1rem; border-radius: 0.375rem; font-size: 0.875rem; font-weight: 500; margin-bottom: 1.5rem;">
-        ⚠️ {{ mensagem }}
-    </div>
+        <div style="background-color: #fef2f2; color: #dc2626; border: 1px solid #fecdd3; padding: 1rem; border-radius: 0.375rem; font-size: 0.875rem; font-weight: 500; margin-bottom: 1.5rem;">
+            ⚠️ {{ mensagem }}
+        </div>
     {% endif %}
 
     <form method="post" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: 1.25rem;">
         {% csrf_token %}
-        
+
         <div style="border: 2px dashed #cbd5e1; padding: 2rem; border-radius: 0.5rem; text-align: center; background: #fafafa; display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
             <span style="font-size: 2rem;">📁</span>
-            <label for="id_arquivo" style="font-size: 0.9rem; font-weight: 600; color: #475569; cursor: pointer;">Clique para selecionar o arquivo .txt</label>
-            <input type="file" id="id_arquivo" name="arquivo_txt" accept=".txt" required style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;">
-            <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">Aviso: O processamento efetuará o mapeamento de lançamentos novos no PostgreSQL sem excluir as situações antigas.</p>
+
+            <label for="id_arquivo" style="font-size: 0.9rem; font-weight: 600; color: #475569; cursor: pointer;">
+                Clique para selecionar o arquivo .txt
+            </label>
+
+            <input
+                type="file"
+                id="id_arquivo"
+                name="arquivo_txt"
+                accept=".txt"
+                required
+                style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;"
+            >
+
+            <div id="arquivo-info" style="display: none; margin-top: 0.75rem; background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; padding: 0.75rem; border-radius: 0.375rem; font-size: 0.85rem; width: 100%;">
+                <strong>Arquivo selecionado:</strong>
+                <div id="arquivo-nome"></div>
+                <div id="arquivo-tamanho"></div>
+            </div>
+
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">
+                Aviso: O processamento atualizará os eventos e lançamentos contábeis sem excluir as situações já parametrizadas.
+            </p>
         </div>
 
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem;">
-            <a href="{% url 'eventos:home' %}" class="btn" style="background-color: #64748b; color: white; padding: 0.45rem 1rem; border-radius: 0.375rem; text-decoration: none; font-size: 0.85rem; font-weight: 600;">Voltar ao Painel</a>
-            <button type="submit" class="btn" style="background-color: #0ea5e9; color: white; padding: 0.45rem 1.5rem; border-radius: 0.375rem; border: none; font-size: 0.85rem; font-weight: 600; cursor: pointer;">Processar Carga</button>
+            <a href="{% url 'eventos:home' %}" class="btn" style="background-color: #64748b; color: white; padding: 0.45rem 1rem; border-radius: 0.375rem; text-decoration: none; font-size: 0.85rem; font-weight: 600;">
+                Voltar ao Painel
+            </a>
+
+            <button type="submit" class="btn" style="background-color: #0ea5e9; color: white; padding: 0.45rem 1.5rem; border-radius: 0.375rem; border: none; font-size: 0.85rem; font-weight: 600; cursor: pointer;">
+                Processar Carga
+            </button>
         </div>
     </form>
 </div>
+
+<script>
+    function formatarTamanho(bytes) {
+        if (bytes === 0) {
+            return '0 Bytes';
+        }
+
+        const unidades = ['Bytes', 'KB', 'MB', 'GB'];
+        const indice = Math.floor(Math.log(bytes) / Math.log(1024));
+        const tamanho = bytes / Math.pow(1024, indice);
+
+        return `${tamanho.toFixed(2)} ${unidades[indice]}`;
+    }
+
+    document.getElementById('id_arquivo').addEventListener('change', function () {
+        const arquivo = this.files[0];
+
+        const info = document.getElementById('arquivo-info');
+        const nome = document.getElementById('arquivo-nome');
+        const tamanho = document.getElementById('arquivo-tamanho');
+
+        if (!arquivo) {
+            info.style.display = 'none';
+            nome.textContent = '';
+            tamanho.textContent = '';
+            return;
+        }
+
+        nome.textContent = arquivo.name;
+        tamanho.textContent = `Tamanho: ${formatarTamanho(arquivo.size)}`;
+        info.style.display = 'block';
+    });
+</script>
 {% endblock %}
