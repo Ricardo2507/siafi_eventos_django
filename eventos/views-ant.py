@@ -1,14 +1,15 @@
-import os
+from pathlib import Path
 
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.db import transaction
 from django.db.models import Prefetch, Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.text import get_valid_filename
 
 from .models import Evento, LancamentoConta, Situacao, SituacaoEvento
 from .parser import parse_tabela_eventos
-
+import os
 
 def _is_admin(user):
     return user.is_authenticated and user.is_superuser
@@ -33,17 +34,6 @@ def home(request):
 
 @login_required
 def eventos_ajax(request):
-    """
-    Endpoint usado pela tabela da tela inicial.
-
-    Melhorias aplicadas:
-    - valida os parâmetros recebidos para evitar consultas pesadas acidentais;
-    - limita o tamanho máximo da página em 100 registros;
-    - usa only(), select_related() e prefetch_related() para reduzir leitura no banco;
-    - sempre devolve JSON no formato esperado pelo front-end;
-    - mantém a segurança: continua protegido por login_required.
-    """
-
     def as_int(value, default):
         try:
             return int(value)
@@ -55,47 +45,20 @@ def eventos_ajax(request):
     length = min(max(1, as_int(request.GET.get('length'), 10)), 100)
     search_value = request.GET.get('search[value]', '').strip()
 
-    queryset = Evento.objects.only(
-        'id',
-        'codigo',
-        'especificacao',
-        'fonte',
-    ).order_by('codigo')
-
-    records_total = Evento.objects.count()
+    queryset = Evento.objects.all()
+    records_total = queryset.count()
 
     if search_value:
         queryset = queryset.filter(
             Q(codigo__icontains=search_value)
             | Q(especificacao__icontains=search_value)
-            | Q(fonte__icontains=search_value)
-            | Q(lancamentos__conta__icontains=search_value)
             | Q(situacoes_relacionadas__situacao__codigo__icontains=search_value)
         ).distinct()
 
     records_filtered = queryset.count()
-
     eventos_pagina = queryset.prefetch_related(
-        Prefetch(
-            'lancamentos',
-            queryset=LancamentoConta.objects.only(
-                'id',
-                'evento_id',
-                'uge',
-                'natureza',
-                'conta',
-                'ordem',
-            ).order_by('ordem', 'uge', 'natureza'),
-        ),
-        Prefetch(
-            'situacoes_relacionadas',
-            queryset=SituacaoEvento.objects.select_related('situacao').only(
-                'id',
-                'evento_id',
-                'situacao_id',
-                'situacao__codigo',
-            ).order_by('situacao__codigo'),
-        ),
+        Prefetch('lancamentos'),
+        Prefetch('situacoes_relacionadas', queryset=SituacaoEvento.objects.select_related('situacao')),
     )[start:start + length]
 
     data = []
@@ -104,10 +67,8 @@ def eventos_ajax(request):
             f'{lancamento.uge} {lancamento.natureza} {lancamento.conta}'
             for lancamento in evento.lancamentos.all()
         ) or 'Nenhum'
-
         situacoes = '<br>'.join(
-            relacao.situacao.codigo
-            for relacao in evento.situacoes_relacionadas.all()
+            relacao.situacao.codigo for relacao in evento.situacoes_relacionadas.all()
         ) or 'Nenhuma'
 
         acoes = f'''
@@ -146,10 +107,7 @@ def evento_detail_modal(request, evento_id):
     evento = get_object_or_404(
         Evento.objects.prefetch_related(
             Prefetch('lancamentos'),
-            Prefetch(
-                'situacoes_relacionadas',
-                queryset=SituacaoEvento.objects.select_related('situacao'),
-            ),
+            Prefetch('situacoes_relacionadas', queryset=SituacaoEvento.objects.select_related('situacao')),
         ),
         id=evento_id,
     )
@@ -161,10 +119,7 @@ def evento_detail(request, evento_id):
     evento = get_object_or_404(
         Evento.objects.prefetch_related(
             Prefetch('lancamentos'),
-            Prefetch(
-                'situacoes_relacionadas',
-                queryset=SituacaoEvento.objects.select_related('situacao'),
-            ),
+            Prefetch('situacoes_relacionadas', queryset=SituacaoEvento.objects.select_related('situacao')),
         ),
         id=evento_id,
     )
@@ -244,7 +199,7 @@ def importar_tabela_view(request):
         if not arquivo_upload.name.lower().endswith('.txt'):
             contexto.update({
                 'status': 'error',
-                'mensagem': 'Extensão inválida. Forneça um arquivo .txt do SIAFI.',
+                'mensagem': 'Extensão inválida. Forneça um arquivo .txt do SIAFI.'
             })
             return render(request, 'eventos/importar_tabela.html', contexto)
 
@@ -271,7 +226,7 @@ def importar_tabela_view(request):
                             'estorno': pe.estorno,
                             'especificacao': pe.especificacao,
                             'fonte': f'Upload Manual via Web por {request.user.username}',
-                        },
+                        }
                     )
 
                     LancamentoConta.objects.filter(evento=evento).delete()
@@ -290,7 +245,7 @@ def importar_tabela_view(request):
                 if objetos_lancamentos:
                     LancamentoConta.objects.bulk_create(
                         objetos_lancamentos,
-                        batch_size=1000,
+                        batch_size=1000
                     )
                     total_lancamentos = len(objetos_lancamentos)
 
@@ -300,13 +255,13 @@ def importar_tabela_view(request):
                     f'Sucesso! Foram processados {len(parsed_eventos)} eventos '
                     f'e {total_lancamentos} lançamentos contábeis. '
                     f'As parametrizações existentes foram preservadas.'
-                ),
+                )
             })
 
         except Exception as erro:
             contexto.update({
                 'status': 'error',
-                'mensagem': f'Falha crítica no processamento: {str(erro)}',
+                'mensagem': f'Falha crítica no processamento: {str(erro)}'
             })
 
         finally:

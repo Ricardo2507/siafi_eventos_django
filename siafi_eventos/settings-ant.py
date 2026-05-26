@@ -72,33 +72,19 @@ TEMPLATES = [
 WSGI_APPLICATION = 'siafi_eventos.wsgi.application'
 ASGI_APPLICATION = 'siafi_eventos.asgi.application'
 
-# Banco de dados
-# DEV: usa SQLite por padrão para facilitar testes locais.
-# PROD: defina DB_ENGINE=postgresql no .env e informe DB_NAME, DB_USER, DB_PASSWORD, DB_HOST e DB_PORT.
-DB_ENGINE = os.getenv('DB_ENGINE', 'sqlite' if DEBUG else 'postgresql').strip().lower()
+# Configuração do PostgreSQL
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv('DB_NAME'),
+        'USER': os.getenv('DB_USER'),
+        'PASSWORD': os.getenv('DB_PASSWORD'),
+        'HOST': os.getenv('DB_HOST'),
+        'PORT': os.getenv('DB_PORT'),
+    }
+}
 
-if DB_ENGINE == 'sqlite':
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / os.getenv('SQLITE_NAME', 'db.sqlite3'),
-        }
-    }
-else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.getenv('DB_NAME'),
-            'USER': os.getenv('DB_USER'),
-            'PASSWORD': os.getenv('DB_PASSWORD'),
-            'HOST': os.getenv('DB_HOST', '127.0.0.1'),
-            'PORT': os.getenv('DB_PORT', '5432'),
-            'CONN_MAX_AGE': int(os.getenv('DB_CONN_MAX_AGE', '60')),
-            'OPTIONS': {
-                'connect_timeout': int(os.getenv('DB_CONNECT_TIMEOUT', '10')),
-            },
-        }
-    }
+
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -125,16 +111,13 @@ STATICFILES_DIRS = [BASE_DIR / 'eventos' / 'static']
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# Hostinger + Cloudflare/Nginx
-# O Nginx precisa repassar X-Forwarded-Proto corretamente.
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-USE_X_FORWARDED_HOST = env_bool('USE_X_FORWARDED_HOST', False)
-
-SECURE_SSL_REDIRECT = env_bool('SECURE_SSL_REDIRECT', False if DEBUG else True)
-SESSION_COOKIE_SECURE = env_bool('SESSION_COOKIE_SECURE', False if DEBUG else True)
-CSRF_COOKIE_SECURE = env_bool('CSRF_COOKIE_SECURE', False if DEBUG else True)
-SECURE_HSTS_SECONDS = int(os.getenv('SECURE_HSTS_SECONDS', '0' if DEBUG else '31536000'))
-SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool('SECURE_HSTS_INCLUDE_SUBDOMAINS', False if DEBUG else True)
-SECURE_HSTS_PRELOAD = env_bool('SECURE_HSTS_PRELOAD', False if DEBUG else True)
+SECURE_SSL_REDIRECT = env_bool('SECURE_SSL_REDIRECT', not DEBUG)
+SESSION_COOKIE_SECURE = env_bool('SESSION_COOKIE_SECURE', not DEBUG)
+CSRF_COOKIE_SECURE = env_bool('CSRF_COOKIE_SECURE', not DEBUG)
+SECURE_HSTS_SECONDS = int(os.getenv('SECURE_HSTS_SECONDS', '31536000' if not DEBUG else '0'))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool('SECURE_HSTS_INCLUDE_SUBDOMAINS', not DEBUG)
+SECURE_HSTS_PRELOAD = env_bool('SECURE_HSTS_PRELOAD', not DEBUG)
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
+
